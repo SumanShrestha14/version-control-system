@@ -39,14 +39,16 @@ int cat_file(const std::string &sha1, const std::string &flag) {
     return EXIT_FAILURE;
   }
 
-  std::ifstream file(".git/objects/" + sha1.substr(0, 2) + "/" + sha1.substr(2), std::ios::binary);
+  std::ifstream file(".git/objects/" + sha1.substr(0, 2) + "/" + sha1.substr(2),
+                     std::ios::binary);
   if (!file.is_open()) {
     std::cerr << "Failed to open file: " << ".git/objects/" << sha1.substr(0, 2)
               << "/" << sha1.substr(2) << '\n';
     return EXIT_FAILURE;
   }
 
-  std::string compressed((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  std::string compressed((std::istreambuf_iterator<char>(file)),
+                         std::istreambuf_iterator<char>());
   std::string decompressed = decompress(compressed);
   std::size_t null_pos = decompressed.find('\0');
   if (null_pos == std::string::npos) {
@@ -58,4 +60,22 @@ int cat_file(const std::string &sha1, const std::string &flag) {
   std::cout << blob_content;
   file.close();
   return EXIT_SUCCESS;
+}
+
+int hash_object(const std::string &file_path, bool write) {
+  try {
+    std::string content = read_file(file_path);
+    std::string header = "blob " + std::to_string(content.size()) + "\0";
+    std::string store = header + content;
+    std::string hash = sha1_hex(store);
+    if (write) {
+      std::string compressed = compress(store);
+      write_object_file(hash, compressed);
+    }
+    std::cout << hash << '\n';
+    return EXIT_SUCCESS;
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << '\n';
+    return EXIT_FAILURE;
+  }
 }
