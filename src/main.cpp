@@ -4,7 +4,6 @@
 
 using namespace std;
 
-string decompress(const string &compressed);
 int main(int argc, char *argv[]) {
   if (argc < 2) {
     cerr << "No command provided.\n";
@@ -14,7 +13,7 @@ int main(int argc, char *argv[]) {
   string command = argv[1];
 
   if (command == "init") {
-    git_init();
+    return git_init();
   } else if (command == "cat-file") {
     if (argc != 4) {
       cerr << "Usage: git cat-file -p <sha1>\n";
@@ -22,7 +21,7 @@ int main(int argc, char *argv[]) {
     }
     string flag = argv[2];
     string sha1 = argv[3];
-    cat_file(sha1, flag);
+    return cat_file(sha1, flag);
   } else if (command == "hash-object") {
     if (argc < 3) {
       cerr << "Usage: git hash-object <flag>(optional) <file>\n";

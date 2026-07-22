@@ -65,7 +65,7 @@ int cat_file(const std::string &sha1, const std::string &flag) {
 int hash_object(const std::string &file_path, bool write) {
   try {
     std::string content = read_file(file_path);
-    std::string header = "blob " + std::to_string(content.size()) + "\0";
+    std::string header = "blob " + std::to_string(content.size()) + '\0';
     std::string store = header + content;
     std::string hash = sha1_hex(store);
     if (write) {
