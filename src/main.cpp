@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     string sha1 = argv[3];
     return cat_file(sha1, flag);
   } else if (command == "hash-object") {
-    if (argc < 3) {
+    if (argc < 3 || argc > 4) {
       cerr << "Usage: git hash-object <flag>(optional) <file>\n";
       return EXIT_FAILURE;
     }
