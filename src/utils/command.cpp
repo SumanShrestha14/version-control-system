@@ -6,6 +6,8 @@
 #include <iostream>
 #include <iterator>
 
+
+
 int git_init() {
   try {
     std::filesystem::create_directory(".git");
@@ -78,4 +80,9 @@ int hash_object(const std::string &file_path, bool write) {
     std::cerr << "Error: " << e.what() << '\n';
     return EXIT_FAILURE;
   }
+}
+
+int ls_tree(const std::string &sha1,bool name_only) {
+
+  return EXIT_SUCCESS;
 }

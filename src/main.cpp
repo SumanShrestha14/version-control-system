@@ -44,6 +44,22 @@ int main(int argc, char *argv[]) {
       string file_path = argv[3];
       return hash_object(file_path, write);
     }
+  } else if (command == "ls-tree") {
+    bool name_only = false;
+    string sha1;
+    if (argv[2] == "--name-only") {
+      name_only = true;
+      sha1 = argv[3];
+    } else {
+      sha1 = argv[2];
+    }
+
+    if (sha1.empty()) {
+      std::cerr << "usage: ls-tree [--name-only] <tree-sha>\n";
+      return EXIT_FAILURE;
+    }
+
+    return ls_tree(sha1, name_only);
   } else {
     cerr << "Unknown command " << command << '\n';
     return EXIT_FAILURE;
