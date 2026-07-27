@@ -6,8 +6,6 @@
 #include <iostream>
 #include <iterator>
 
-
-
 int git_init() {
   try {
     std::filesystem::create_directory(".git");
@@ -82,7 +80,42 @@ int hash_object(const std::string &file_path, bool write) {
   }
 }
 
-int ls_tree(const std::string &sha1,bool name_only) {
+int ls_tree(const std::string &sha1, bool name_only) {
+  if (sha1.length() != 40) {
+    std::cerr << "Invalid SHA-1 hash: " << sha1 << '\n';
+    return EXIT_FAILURE;
+  }
+
+  std::string decompressed;
+  try {
+    decompressed = read_object(sha1);
+  } catch (const std::exception &e) {
+    std::cerr << e.what() << '\n';
+    return EXIT_FAILURE;
+  }
+
+  // Sanity check: make sure this is actually a tree object, not a blob/commit
+  if (decompressed.rfind("tree ", 0) != 0) {
+    std::cerr << "fatal: " << sha1 << " is not a tree object\n";
+    return EXIT_FAILURE;
+  }
+
+  std::vector<TreeEntry> entries;
+  try {
+    entries = parse_tree_object(decompressed);
+  } catch (const std::exception &e) {
+    std::cerr << e.what() << '\n';
+    return EXIT_FAILURE;
+  }
+
+  for (const auto &entry : entries) {
+    if (name_only) {
+      std::cout << entry.name << '\n';
+    } else {
+      std::cout << pad_mode(entry.mode) << ' ' << mode_to_type(entry.mode)
+                << ' ' << entry.sha1 << '\t' << entry.name << '\n';
+    }
+  }
 
   return EXIT_SUCCESS;
 }
