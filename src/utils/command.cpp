@@ -6,6 +6,80 @@
 #include <iostream>
 #include <iterator>
 
+namespace {
+
+struct WriteTreeEntry {
+  std::string mode;
+  std::string name;
+  std::string raw_sha; // 20 raw bytes
+};
+
+// Git's sort key: directories are compared as if their name had a
+// trailing '/'. This only changes ordering vs a plain name sort in
+// edge cases (e.g. "foo" dir vs "foo.txt" file), but it's required
+// for byte-exact matches with real git.
+std::string sort_key(const WriteTreeEntry &e) {
+  return e.mode == "40000" ? e.name + "/" : e.name;
+}
+
+std::string write_tree_recursive(const std::filesystem::path &dir_path) {
+  std::vector<WriteTreeEntry> entries;
+
+  for (const auto &dirent : std::filesystem::directory_iterator(dir_path)) {
+    std::string name = dirent.path().filename().string();
+    if (name == ".git") continue;
+
+    if (dirent.is_directory()) {
+      std::string subtree_hex = write_tree_recursive(dirent.path());
+      if (subtree_hex.empty()) continue; // empty dir: git doesn't track it
+      entries.push_back(WriteTreeEntry{
+          "40000", name, hex_to_raw(subtree_hex)});
+    } else if (dirent.is_regular_file()) {
+      std::string content = read_file(dirent.path().string());
+      std::string header = "blob " + std::to_string(content.size()) + '\0';
+      std::string store = header + content;
+
+      std::string hash_hex = sha1_hex(store);
+      std::string compressed = compress(store);
+      write_object_file(hash_hex, compressed);
+
+      bool is_executable =
+          (std::filesystem::status(dirent.path()).permissions() &
+           std::filesystem::perms::owner_exec) != std::filesystem::perms::none;
+      std::string mode = is_executable ? "100755" : "100644";
+
+      entries.push_back(WriteTreeEntry{mode, name, sha1_raw(store)});
+    }
+    // symlinks (mode 120000) intentionally unhandled for now —
+    // flagging this as a known gap, not silently mishandling it.
+  }
+
+  if (entries.empty()) {
+    return ""; // signal "nothing to contribute" to the caller
+  }
+
+  std::sort(entries.begin(), entries.end(),
+            [](const WriteTreeEntry &a, const WriteTreeEntry &b) {
+              return sort_key(a) < sort_key(b);
+            });
+
+  std::string content;
+  for (const auto &e : entries) {
+    content += e.mode + " " + e.name + '\0' + e.raw_sha;
+  }
+
+  std::string header = "tree " + std::to_string(content.size()) + '\0';
+  std::string store = header + content;
+
+  std::string hash_hex = sha1_hex(store);
+  std::string compressed = compress(store);
+  write_object_file(hash_hex, compressed);
+
+  return hash_hex;
+}
+
+} // namespace
+
 int git_init() {
   try {
     std::filesystem::create_directory(".git");
@@ -118,4 +192,20 @@ int ls_tree(const std::string &sha1, bool name_only) {
   }
 
   return EXIT_SUCCESS;
+}
+
+
+int write_tree() {
+  try {
+    std::string hash = write_tree_recursive(".");
+    if (hash.empty()) {
+      // Root with literally nothing in it — git's empty tree hash.
+      hash = sha1_hex(std::string("tree 0") + '\0');
+    }
+    std::cout << hash << '\n';
+    return EXIT_SUCCESS;
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << '\n';
+    return EXIT_FAILURE;
+  }
 }

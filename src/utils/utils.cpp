@@ -160,3 +160,23 @@ std::string read_object(const std::string &sha1) {
 
   return decompress(compressed);
 }
+
+string sha1_raw(const string &data) {
+  unsigned char digest[SHA_DIGEST_LENGTH];
+  SHA1(reinterpret_cast<const unsigned char *>(data.data()), data.size(), digest);
+  return string(reinterpret_cast<char *>(digest), SHA_DIGEST_LENGTH);
+}
+
+string hex_to_raw(const string &hex) {
+  if (hex.length() != 40) {
+    throw runtime_error("Invalid hex SHA-1 length: " + hex);
+  }
+  string raw;
+  raw.reserve(20);
+  for (size_t i = 0; i < 40; i += 2) {
+    unsigned int byte;
+    sscanf(hex.substr(i, 2).c_str(), "%02x", &byte);
+    raw.push_back(static_cast<char>(byte));
+  }
+  return raw;
+}
