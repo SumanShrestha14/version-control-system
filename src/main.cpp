@@ -63,6 +63,8 @@ int main(int argc, char *argv[]) {
       return EXIT_FAILURE;
     }
     return ls_tree(sha1, name_only);
+  } else if (command == "write-tree") {
+    return write_tree();
   } else {
     cerr << "Unknown command " << command << '\n';
     return EXIT_FAILURE;

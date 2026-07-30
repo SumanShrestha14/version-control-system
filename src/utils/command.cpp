@@ -1,10 +1,105 @@
 #include "command.h"
 #include "utils.h"
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
+
+namespace {
+
+struct WriteTreeEntry {
+  std::string mode;
+  std::string name;
+  std::string raw_sha; // 20 raw bytes
+};
+
+// Git's sort key: directories are compared as if their name had a
+// trailing '/'. This only changes ordering vs a plain name sort in
+// edge cases (e.g. "foo" dir vs "foo.txt" file), but it's required
+// for byte-exact matches with real git.
+std::string sort_key(const WriteTreeEntry &e) {
+  return e.mode == "40000" ? e.name + "/" : e.name;
+}
+
+std::string write_tree_recursive(const std::filesystem::path &dir_path) {
+  std::vector<WriteTreeEntry> entries;
+
+  for (const auto &dirent : std::filesystem::directory_iterator(dir_path)) {
+    std::string name = dirent.path().filename().string();
+    if (name == ".git")
+      continue;
+
+    // Check for symlinks BEFORE is_directory()/is_regular_file(), since those
+    // follow symlinks by default (they use status(), not symlink_status()).
+    // Without this check, a symlink to a directory would get silently
+    // recursed into, and a symlink to a file would get silently hashed as
+    // a regular blob -- both wrong.
+    std::error_code ec;
+    auto sym_stat = std::filesystem::symlink_status(dirent.path(), ec);
+    if (ec) {
+      std::cerr << "Warning: could not stat " << dirent.path().string()
+                << ", skipping\n";
+      continue;
+    }
+    if (std::filesystem::is_symlink(sym_stat)) {
+      // Symlinks (mode 120000) are explicitly skipped for now rather than
+      // stored as gitlink/symlink blobs. This is a real gap, not silent
+      // mishandling: we diagnose it instead of following the link.
+      std::cerr << "Warning: skipping symlink " << dirent.path().string()
+                << " (mode 120000 not yet implemented)\n";
+      continue;
+    }
+
+    if (dirent.is_directory()) {
+      std::string subtree_hex = write_tree_recursive(dirent.path());
+      if (subtree_hex.empty())
+        continue; // empty dir: git doesn't track it
+      entries.push_back(WriteTreeEntry{"40000", name, hex_to_raw(subtree_hex)});
+    } else if (dirent.is_regular_file()) {
+      std::string content = read_file(dirent.path().string());
+      std::string header = "blob " + std::to_string(content.size()) + '\0';
+      std::string store = header + content;
+
+      std::string hash_hex = sha1_hex(store);
+      std::string compressed = compress(store);
+      write_object_file(hash_hex, compressed);
+
+      bool is_executable =
+          (std::filesystem::status(dirent.path()).permissions() &
+           std::filesystem::perms::owner_exec) != std::filesystem::perms::none;
+      std::string mode = is_executable ? "100755" : "100644";
+
+      entries.push_back(WriteTreeEntry{mode, name, sha1_raw(store)});
+    }
+  }
+
+  if (entries.empty()) {
+    return ""; // signal "nothing to contribute" to the caller
+  }
+
+  std::sort(entries.begin(), entries.end(),
+            [](const WriteTreeEntry &a, const WriteTreeEntry &b) {
+              return sort_key(a) < sort_key(b);
+            });
+
+  std::string content;
+  for (const auto &e : entries) {
+    content += e.mode + " " + e.name + '\0' + e.raw_sha;
+  }
+
+  std::string header = "tree " + std::to_string(content.size()) + '\0';
+  std::string store = header + content;
+
+  std::string hash_hex = sha1_hex(store);
+  std::string compressed = compress(store);
+  write_object_file(hash_hex, compressed);
+
+  return hash_hex;
+}
+
+} // namespace
 
 int git_init() {
   try {
@@ -118,4 +213,23 @@ int ls_tree(const std::string &sha1, bool name_only) {
   }
 
   return EXIT_SUCCESS;
+}
+
+int write_tree() {
+  try {
+    std::string hash = write_tree_recursive(".");
+    if (hash.empty()) {
+      // Root with literally nothing in it -- still needs to actually be
+      // written to .git/objects, not just have its hash computed.
+      std::string store = std::string("tree 0") + '\0';
+      hash = sha1_hex(store);
+      std::string compressed = compress(store);
+      write_object_file(hash, compressed);
+    }
+    std::cout << hash << '\n';
+    return EXIT_SUCCESS;
+  } catch (const std::exception &e) {
+    std::cerr << "Error: " << e.what() << '\n';
+    return EXIT_FAILURE;
+  }
 }
