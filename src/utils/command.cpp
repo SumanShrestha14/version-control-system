@@ -1,5 +1,6 @@
 #include "command.h"
 #include "utils.h"
+#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -27,13 +28,35 @@ std::string write_tree_recursive(const std::filesystem::path &dir_path) {
 
   for (const auto &dirent : std::filesystem::directory_iterator(dir_path)) {
     std::string name = dirent.path().filename().string();
-    if (name == ".git") continue;
+    if (name == ".git")
+      continue;
+
+    // Check for symlinks BEFORE is_directory()/is_regular_file(), since those
+    // follow symlinks by default (they use status(), not symlink_status()).
+    // Without this check, a symlink to a directory would get silently
+    // recursed into, and a symlink to a file would get silently hashed as
+    // a regular blob -- both wrong.
+    std::error_code ec;
+    auto sym_stat = std::filesystem::symlink_status(dirent.path(), ec);
+    if (ec) {
+      std::cerr << "Warning: could not stat " << dirent.path().string()
+                << ", skipping\n";
+      continue;
+    }
+    if (std::filesystem::is_symlink(sym_stat)) {
+      // Symlinks (mode 120000) are explicitly skipped for now rather than
+      // stored as gitlink/symlink blobs. This is a real gap, not silent
+      // mishandling: we diagnose it instead of following the link.
+      std::cerr << "Warning: skipping symlink " << dirent.path().string()
+                << " (mode 120000 not yet implemented)\n";
+      continue;
+    }
 
     if (dirent.is_directory()) {
       std::string subtree_hex = write_tree_recursive(dirent.path());
-      if (subtree_hex.empty()) continue; // empty dir: git doesn't track it
-      entries.push_back(WriteTreeEntry{
-          "40000", name, hex_to_raw(subtree_hex)});
+      if (subtree_hex.empty())
+        continue; // empty dir: git doesn't track it
+      entries.push_back(WriteTreeEntry{"40000", name, hex_to_raw(subtree_hex)});
     } else if (dirent.is_regular_file()) {
       std::string content = read_file(dirent.path().string());
       std::string header = "blob " + std::to_string(content.size()) + '\0';
@@ -50,8 +73,6 @@ std::string write_tree_recursive(const std::filesystem::path &dir_path) {
 
       entries.push_back(WriteTreeEntry{mode, name, sha1_raw(store)});
     }
-    // symlinks (mode 120000) intentionally unhandled for now —
-    // flagging this as a known gap, not silently mishandling it.
   }
 
   if (entries.empty()) {
@@ -194,13 +215,16 @@ int ls_tree(const std::string &sha1, bool name_only) {
   return EXIT_SUCCESS;
 }
 
-
 int write_tree() {
   try {
     std::string hash = write_tree_recursive(".");
     if (hash.empty()) {
-      // Root with literally nothing in it — git's empty tree hash.
-      hash = sha1_hex(std::string("tree 0") + '\0');
+      // Root with literally nothing in it -- still needs to actually be
+      // written to .git/objects, not just have its hash computed.
+      std::string store = std::string("tree 0") + '\0';
+      hash = sha1_hex(store);
+      std::string compressed = compress(store);
+      write_object_file(hash, compressed);
     }
     std::cout << hash << '\n';
     return EXIT_SUCCESS;

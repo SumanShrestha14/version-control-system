@@ -175,7 +175,10 @@ string hex_to_raw(const string &hex) {
   raw.reserve(20);
   for (size_t i = 0; i < 40; i += 2) {
     unsigned int byte;
-    sscanf(hex.substr(i, 2).c_str(), "%02x", &byte);
+    int matched = sscanf(hex.substr(i, 2).c_str(), "%02x", &byte);
+    if (matched != 1) {
+      throw runtime_error("Invalid hex SHA-1 characters: " + hex);
+    }
     raw.push_back(static_cast<char>(byte));
   }
   return raw;
