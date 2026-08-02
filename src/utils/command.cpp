@@ -233,3 +233,37 @@ int write_tree() {
     return EXIT_FAILURE;
   }
 }
+
+int commit_tree(const std::string &tree_sha, const std::string &parent_sha,
+                const std::string &message) {
+  if (tree_sha.length() != 40) {
+    std::cerr << "fatal: not a valid tree object: " << tree_sha << '\n';
+    return EXIT_FAILURE;
+  }
+  if (!parent_sha.empty() && parent_sha.length() != 40) {
+    std::cerr << "fatal: not a valid commit object: " << parent_sha << '\n';
+    return EXIT_FAILURE;
+  }
+
+  const std::string author = "Suman <suman@example.com>";
+  std::string when = current_git_timestamp();
+
+  std::string content = "tree " + tree_sha + "\n";
+  if (!parent_sha.empty()) {
+    content += "parent " + parent_sha + "\n";
+  }
+  content += "author " + author + " " + when + "\n";
+  content += "committer " + author + " " + when + "\n";
+  content += "\n";
+  content += message + "\n";
+
+  std::string header = "commit " + std::to_string(content.size()) + '\0';
+  std::string store = header + content;
+
+  std::string hash = sha1_hex(store);
+  std::string compressed = compress(store);
+  write_object_file(hash, compressed);
+
+  std::cout << hash << '\n';
+  return EXIT_SUCCESS;
+}

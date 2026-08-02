@@ -30,4 +30,5 @@ std::string pad_mode(const std::string &mode);
 std::string read_object(const std::string &sha1);
 std::string sha1_raw(const std::string &data);
 std::string hex_to_raw(const std::string &hex);
+std::string current_git_timestamp();
 #endif

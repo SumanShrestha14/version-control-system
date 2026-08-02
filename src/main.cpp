@@ -65,6 +65,46 @@ int main(int argc, char *argv[]) {
     return ls_tree(sha1, name_only);
   } else if (command == "write-tree") {
     return write_tree();
+  } else if (command == "commit-tree") {
+    if (argc < 4) {
+      cerr << "Usage: git commit-tree <tree_sha> [-p <parent_sha>] -m "
+              "<message>\n";
+      return EXIT_FAILURE;
+    }
+
+    std::string tree_sha = argv[2];
+    std::string parent_sha;
+    std::string message;
+    bool got_message = false;
+
+    for (int i = 3; i < argc; ++i) {
+      std::string arg =
+          argv[i]; // convert first -- raw pointer compares bite you otherwise
+      if (arg == "-p") {
+        if (i + 1 >= argc) {
+          cerr << "Error: -p requires a commit SHA\n";
+          return EXIT_FAILURE;
+        }
+        parent_sha = argv[++i];
+      } else if (arg == "-m") {
+        if (i + 1 >= argc) {
+          cerr << "Error: -m requires a message\n";
+          return EXIT_FAILURE;
+        }
+        message = argv[++i];
+        got_message = true;
+      } else {
+        cerr << "Unknown argument: " << arg << '\n';
+        return EXIT_FAILURE;
+      }
+    }
+
+    if (!got_message) {
+      cerr << "Error: commit message (-m) is required\n";
+      return EXIT_FAILURE;
+    }
+
+    return commit_tree(tree_sha, parent_sha, message);
   } else {
     cerr << "Unknown command " << command << '\n';
     return EXIT_FAILURE;
