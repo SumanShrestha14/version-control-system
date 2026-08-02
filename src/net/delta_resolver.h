@@ -15,3 +15,4 @@ public:
 
     DeltaResolver() = delete;
 };
+//delta recolver code  for post delta application
