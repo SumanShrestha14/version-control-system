@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <ctime>
 #include <filesystem>
 #include <openssl/sha.h>
 #include <sstream>
@@ -156,14 +157,15 @@ std::string read_object(const std::string &sha1) {
   }
 
   std::string compressed((std::istreambuf_iterator<char>(file)),
-                          std::istreambuf_iterator<char>());
+                         std::istreambuf_iterator<char>());
 
   return decompress(compressed);
 }
 
 string sha1_raw(const string &data) {
   unsigned char digest[SHA_DIGEST_LENGTH];
-  SHA1(reinterpret_cast<const unsigned char *>(data.data()), data.size(), digest);
+  SHA1(reinterpret_cast<const unsigned char *>(data.data()), data.size(),
+       digest);
   return string(reinterpret_cast<char *>(digest), SHA_DIGEST_LENGTH);
 }
 
@@ -182,4 +184,35 @@ string hex_to_raw(const string &hex) {
     raw.push_back(static_cast<char>(byte));
   }
   return raw;
+}
+std::string current_git_timestamp() {
+  std::time_t now = std::time(nullptr);
+  std::tm local_tm{};
+  std::tm utc_tm{};
+#ifdef _WIN32
+  localtime_s(&local_tm, &now);
+  gmtime_s(&utc_tm, &now);
+#else
+  localtime_r(&now, &local_tm);
+  gmtime_r(&now, &utc_tm);
+#endif
+
+// Compute local offset from UTC in minutes, so the timezone field is
+// actually correct for the machine running this, not just a hardcoded
+// "+0000". mktime() on both broken-down times gives us the epoch-second
+// difference directly.
+
+  std::time_t local_as_time_t = std::mktime(&local_tm);
+  std::time_t utc_as_time_t = std::mktime(&utc_tm);
+  long offset_seconds = static_cast<long>(local_as_time_t - utc_as_time_t);
+
+  char sign = offset_seconds >= 0 ? '+' : '-';
+  long abs_offset_minutes = std::abs(offset_seconds) / 60;
+  long hours = abs_offset_minutes / 60;
+  long minutes = abs_offset_minutes % 60;
+
+  char buf[8];
+  std::snprintf(buf, sizeof(buf), "%c%02ld%02ld", sign, hours, minutes);
+
+  return std::to_string(static_cast<long long>(now)) + " " + buf;
 }
