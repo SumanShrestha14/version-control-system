@@ -1,10 +1,11 @@
 #include "utils/command.h"
+#include <curl/curl.h>
 #include <iostream>
 #include <string>
 
 using namespace std;
-
 int main(int argc, char *argv[]) {
+  curl_global_init(CURL_GLOBAL_DEFAULT);
   if (argc < 2) {
     cerr << "No command provided.\n";
     return EXIT_FAILURE;
@@ -13,10 +14,10 @@ int main(int argc, char *argv[]) {
   string command = argv[1];
 
   if (command == "init") {
-    return git_init();
+    return synk_init();
   } else if (command == "cat-file") {
     if (argc != 4) {
-      cerr << "Usage: git cat-file -p <sha1>\n";
+      cerr << "Usage: Synk cat-file -p <sha1>\n";
       return EXIT_FAILURE;
     }
     string flag = argv[2];
@@ -24,7 +25,7 @@ int main(int argc, char *argv[]) {
     return cat_file(sha1, flag);
   } else if (command == "hash-object") {
     if (argc < 3 || argc > 4) {
-      cerr << "Usage: git hash-object <flag>(optional) <file>\n";
+      cerr << "Usage: Synk hash-object <flag>(optional) <file>\n";
       return EXIT_FAILURE;
     }
 
@@ -67,7 +68,7 @@ int main(int argc, char *argv[]) {
     return write_tree();
   } else if (command == "commit-tree") {
     if (argc < 4) {
-      cerr << "Usage: git commit-tree <tree_sha> [-p <parent_sha>] -m "
+      cerr << "Usage: Synk commit-tree <tree_sha> [-p <parent_sha>] -m "
               "<message>\n";
       return EXIT_FAILURE;
     }
@@ -105,10 +106,16 @@ int main(int argc, char *argv[]) {
     }
 
     return commit_tree(tree_sha, parent_sha, message);
+  } else if (command == "clone") {
+    if (argc < 4) {
+      std::cerr << "Usage: " << argv[0] << " clone <url> <dir>\n";
+      return 1;
+    }
+    handle_clone(argv[2], argv[3]);
   } else {
     cerr << "Unknown command " << command << '\n';
     return EXIT_FAILURE;
   }
-
+  curl_global_cleanup();
   return EXIT_SUCCESS;
 }
