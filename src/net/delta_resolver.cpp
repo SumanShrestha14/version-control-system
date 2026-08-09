@@ -1,7 +1,8 @@
+//simply delta file lai reolve garne 
 #include "delta_resolver.h"
 #include "../core/object_id.h"
 #include <stdexcept>
-#include <unordered_map>
+#include <unordered_map>//standard header file that stores elements in key header file using hasj for fast access
 
 namespace {
 uint64_t readDeltaVarint(const std::string &data, size_t &pos) {
@@ -22,10 +23,10 @@ uint64_t readDeltaVarint(const std::string &data, size_t &pos) {
 std::string DeltaResolver::applyDelta(const std::string &base,
                                       const std::string &delta) {
   size_t pos = 0;
-  uint64_t baseSize = readDeltaVarint(delta, pos);
+  uint64_t baseSize = readDeltaVarint(delta, pos);//read the delta size /object
   uint64_t targetSize = readDeltaVarint(delta, pos);
 
-  if (baseSize != base.size()) {
+  if (baseSize != base.size()) {//checking about how much size it could go after reoslving
     throw std::runtime_error("DeltaResolver: base size mismatch (expected " +
                              std::to_string(baseSize) + ", got " +
                              std::to_string(base.size()) + ")");
@@ -34,10 +35,10 @@ std::string DeltaResolver::applyDelta(const std::string &base,
   std::string result;
   result.reserve(targetSize);
 
-  while (pos < delta.size()) {
+  while (pos < delta.size()) {//main delta loop
     uint8_t opcode = static_cast<uint8_t>(delta[pos++]);
 
-    if (opcode & 0x80) {
+    if (opcode & 0x80) {//if highest bit is set or not vanera herne
       uint32_t offset = 0, size = 0;
       size_t operandBytes = 0;
       for (int bit = 0; bit < 7; ++bit)
@@ -52,7 +53,7 @@ std::string DeltaResolver::applyDelta(const std::string &base,
         offset |= static_cast<uint32_t>(static_cast<uint8_t>(delta[pos++]))
                   << 8;
       if (opcode & 0x04)
-        offset |= static_cast<uint32_t>(static_cast<uint8_t>(delta[pos++]))
+        offset |= static_cast<uint32_t>(static_cast<uint8_t>(delta[pos++]))//for checking offset multiple if
                   << 16;
       if (opcode & 0x08)
         offset |= static_cast<uint32_t>(static_cast<uint8_t>(delta[pos++]))
@@ -71,11 +72,11 @@ std::string DeltaResolver::applyDelta(const std::string &base,
             "DeltaResolver: copy instruction reads past end of base object");
       }
       result.append(base, offset, size);
-    } else if (opcode != 0) {
+    } else if (opcode != 0) {//byte directly contain in data
       size_t len = opcode;
       if (pos + len > delta.size())
         throw std::runtime_error("DeltaResolver: truncated insert data");
-      result.append(delta, pos, len);
+      result.append(delta, pos, len);//actual copying
       pos += len;
     } else {
       throw std::runtime_error(
@@ -83,7 +84,7 @@ std::string DeltaResolver::applyDelta(const std::string &base,
     }
   }
 
-  if (result.size() != targetSize) {
+  if (result.size() != targetSize) {//expected vs actual
     throw std::runtime_error(
         "DeltaResolver: reconstructed size mismatch (expected " +
         std::to_string(targetSize) + ", got " + std::to_string(result.size()) +
@@ -123,7 +124,7 @@ DeltaResolver::resolve(const std::vector<PackObject> &objects) {
       const PackObject &obj = objects[i];
 
       if (obj.type != PackObjType::OfsDelta &&
-          obj.type != PackObjType::RefDelta) {
+          obj.type != PackObjType::RefDelta) {//yes this is not delta finished resolving
         resolved[i] = ResolvedObject{obj.type, obj.data};
         done[i] = true;
         shaToIndex[rawHashOf(obj.type, obj.data)] = i;
@@ -149,7 +150,7 @@ DeltaResolver::resolve(const std::vector<PackObject> &objects) {
       if (!done[baseIdx])
         continue;
 
-      const ResolvedObject &base = resolved[baseIdx];
+      const ResolvedObject &base = resolved[baseIdx];//applt delta after base finding
       resolved[i].type = base.type;
       resolved[i].data = applyDelta(base.data, obj.data);
       done[i] = true;
@@ -165,4 +166,9 @@ DeltaResolver::resolve(const std::vector<PackObject> &objects) {
         "pack)");
   }
   return resolved;
+
 }
+//It first identifies the base object using either its pack offset or SHA-1, 
+//then applies the delta's copy and insert instructions to the base data.
+// It repeats this process to 
+//resolve delta chains and finally produces complete Blob, Tree, or Commit objects
