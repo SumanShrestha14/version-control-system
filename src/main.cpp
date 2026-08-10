@@ -107,11 +107,18 @@ int main(int argc, char *argv[]) {
 
     return commit_tree(tree_sha, parent_sha, message);
   } else if (command == "clone") {
-    if (argc < 4) {
-      std::cerr << "Usage: " << argv[0] << " clone <url> <dir>\n";
-      return 1;
+    try {
+
+      if (argc < 4) {
+        std::cerr << "Usage: " << argv[0] << " clone <url> <dir>\n";
+        return 1;
+      }
+      handle_clone(argv[2], argv[3]);
+    } catch (const std::exception &e) {
+      cerr << "fatal: clone failed: " << e.what() << '\n';
+      curl_global_cleanup();
+      return EXIT_FAILURE;
     }
-    handle_clone(argv[2], argv[3]);
   } else {
     cerr << "Unknown command " << command << '\n';
     return EXIT_FAILURE;

@@ -86,7 +86,7 @@ void checkout_tree(const std::string &tree_sha,
     }
   }
 }
-}
+} // namespace
 namespace {
 
 struct WriteTreeEntry {
@@ -108,7 +108,7 @@ std::string write_tree_recursive(const std::filesystem::path &dir_path) {
 
   for (const auto &dirent : std::filesystem::directory_iterator(dir_path)) {
     std::string name = dirent.path().filename().string();
-    if (name == ".Synk")
+    if (name == ".synk")
       continue;
 
     // Check for symlinks BEFORE is_directory()/is_regular_file(), since those
@@ -386,8 +386,12 @@ void handle_clone(const std::string &repo_url, const std::string &target_dir) {
 
     std::string sha = payload.substr(0, space_pos);
     std::string ref_name = payload.substr(space_pos + 1);
+    if (sha.size() != 40 ||
+        sha.find_first_not_of("0123456789abcdef") != std::string::npos) {
+      std::cerr << "warning: ignoring ref with malformed object id\n";
+      continue;
+    }
     refs.emplace_back(sha, ref_name);
-
     if (ref_name == "HEAD")
       head_sha = sha;
 
@@ -440,8 +444,13 @@ void handle_clone(const std::string &repo_url, const std::string &target_dir) {
   // Demux side-band-64k: the response is pkt-line framed, and (usually)
   // each payload's first byte is a channel indicator:
   //   0x01 = pack data, 0x02 = progress text, 0x03 = fatal error
-  auto pack_lines = parse_pkt_lines(pack_resp.body);
-
+  std::vector<PktLine> pack_lines;
+  try {
+    pack_lines = parse_pkt_lines(pack_resp.body);
+  } catch (const std::exception &e) {
+    std::cerr << "warning: response is not pkt-line framed (" << e.what()
+              << "), will try raw fallback\n";
+  }
   std::string packfile_data;
   bool saw_sideband = false;
 

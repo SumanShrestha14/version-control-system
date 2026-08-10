@@ -137,6 +137,14 @@ std::vector<PackObject> parse_packfile(const std::string &pack_data,
 
   header_object_count = read_u32be(pack_data, 8);
 
+  // Each object needs at least a 1-byte header plus a minimal zlib stream,
+  // so the remaining buffer bounds how many objects can really be present.
+  if (header_object_count > pack_data.size() - 12) {
+    throw std::runtime_error("packfile: declared object count " +
+                             std::to_string(header_object_count) +
+                             " exceeds pack size");
+  }
+
   std::vector<PackObject> objects;
   objects.reserve(header_object_count);
 
