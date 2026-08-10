@@ -21,7 +21,7 @@ Repository Repository::init(const std::filesystem::path &root)
     std::filesystem::create_directories(synkDir / "refs" / "heads");
 
     Repository repo(root, synkDir);
-    repo.refs().setHeadToBranch("main");
+    repo.refs().setHeadToBranch("main"); // default main branch
     return repo;
 }
 
