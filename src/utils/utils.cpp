@@ -64,7 +64,7 @@ string compress(const string &data) {
 }
 
 void write_object_file(const string &hash, const string &compressed) {
-  string dir = ".git/objects/" + hash.substr(0, 2);
+  string dir = ".synk/objects/" + hash.substr(0, 2);
   string path = dir + "/" + hash.substr(2);
 
   filesystem::create_directories(dir);
@@ -149,7 +149,7 @@ std::string read_object(const std::string &sha1) {
     throw std::runtime_error("Invalid SHA-1 hash: " + sha1);
   }
 
-  std::string path = ".git/objects/" + sha1.substr(0, 2) + "/" + sha1.substr(2);
+  std::string path = ".synk/objects/" + sha1.substr(0, 2) + "/" + sha1.substr(2);
 
   std::ifstream file(path, std::ios::binary);
   if (!file.is_open()) {
@@ -185,7 +185,7 @@ string hex_to_raw(const string &hex) {
   }
   return raw;
 }
-std::string current_git_timestamp() {
+std::string current_synk_timestamp() {
   std::time_t now = std::time(nullptr);
   std::tm local_tm{};
   std::tm utc_tm{};
