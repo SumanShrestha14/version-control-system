@@ -241,6 +241,12 @@ std::string apply_delta(const std::string &base, const std::string &delta) {
       // COPY: bits 0-3 select present offset bytes, bits 4-6 select present
       // size bytes
       uint32_t offset = 0, size = 0;
+      size_t operand_bytes = 0;
+      for (int bit = 0; bit < 7; ++bit)
+        if (opcode & (1 << bit))
+          ++operand_bytes;
+      if (pos + operand_bytes > delta.size())
+        throw std::runtime_error("delta: truncated copy instruction");
       if (opcode & 0x01)
         offset |= static_cast<uint8_t>(delta[pos++]);
       if (opcode & 0x02)
