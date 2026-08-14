@@ -202,7 +202,6 @@ We'd rather state gaps explicitly than paper over them:
 - [ ] Static linking or DLL bundling for a portable, dependency-free submission binary
 - [ ] Refactor the verified procedural MVP into the target OOP class architecture
 - [ ] Symlink and submodule support
-- [ ] Additional plumbing/porcelain commands as the CodeCrafters track progresses
 
 ## Team
 
