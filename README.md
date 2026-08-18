@@ -44,7 +44,7 @@ Synk currently implements the following Git plumbing commands, verified against 
 | `synk commit-tree` | Creates a commit object pointing at a given tree |
 | `synk clone` | Clones a remote repository over the Smart HTTP protocol |
 
-Additionally, a binary `.synk/index` (Git index v2 format) is implemented, backing a `git add`-equivalent staging command.
+
 
 ## Project Status
 
@@ -81,11 +81,8 @@ Tree entries store the SHA-1 as **raw 20 bytes**, not as a 40-character hex stri
 
 A commit is just a plain-text object referencing a tree SHA and (optionally) parent commit SHA(s). Because each commit points backward to its parent(s), the full commit history forms a **Directed Acyclic Graph (DAG)** — this is the entire mathematical basis for branching, merging, and history traversal in Git. There's no "branch" object; a branch is just a mutable pointer (a file under `.synk/refs/heads/`) to a commit SHA.
 
-### 3. The Index — the staging area
 
-`.synk/index` is a binary file (Git's index format, version 2) that records what's staged for the next commit: a sorted array of entries containing file path, blob SHA, file mode, size, and (on real Git) filesystem metadata like `ctime`/`mtime`/`inode`. `synk add` writes to this file; `synk write-tree` reads from it to build the tree object for a commit.
-
-### 4. The Smart HTTP Transport (used by `clone`)
+### 3. The Smart HTTP Transport (used by `clone`)
 
 Cloning over HTTP is a negotiation protocol, not a simple file download:
 
@@ -94,7 +91,7 @@ Cloning over HTTP is a negotiation protocol, not a simple file download:
 3. **Packfile transfer** — the server responds with a **packfile**: a compressed, delta-encoded archive of every object needed to satisfy the `want`s. Objects can be stored whole ("non-delta") or as a diff against another object in the pack ("delta"), referenced either by SHA (`ref-delta`) or by relative byte offset (`ofs-delta`). Packfiles use three *different* variable-length integer encodings across their header, delta-offset, and delta-size fields — a subtlety worth studying carefully rather than assuming one varint format fits all.
 4. **Unpacking & checkout** — the client parses every object out of the packfile (resolving deltas against their base objects), writes them into the object database, updates local refs/HEAD, and finally materializes the tree into the working directory.
 
-### 5. Why zlib?
+### 4. Why zlib?
 
 Every object Git stores on disk is zlib-deflate compressed. This is orthogonal to hashing (hashing happens on the *uncompressed* content) but essential for reading and writing objects that interoperate with real Git tooling.
 
