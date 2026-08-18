@@ -1,3 +1,4 @@
+//code for clone operation
 #pragma once
 #include "http_client.h"
 #include "../repository/repository.h"
@@ -6,9 +7,9 @@
 #include <vector>
 #include <utility>
 
-class CloneOperation {
+class CloneOperation { //class for clone operation 
 public:
-    CloneOperation(std::string repoUrl, std::filesystem::path targetDir);
+    CloneOperation(std::string repoUrl, std::filesystem::path targetDir);//target directory
     void run();
 
 private:
