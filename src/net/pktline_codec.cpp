@@ -40,12 +40,12 @@ std::vector<PktLine> PktLineCodec::parse(const std::string &data) {
   }
   return lines;
 }
-
 std::string PktLineCodec::format(const std::string &payload) {
+
   if (payload.empty())
-    return "0000";
+    return "0000";//return 0 if the paylod is empty 
   size_t totalLen = payload.size() + 4;
   char buf[5];
   std::snprintf(buf, sizeof(buf), "%04zx", totalLen);
-  return std::string(buf, 4) + payload;
+  return std::string(buf, 4) + payload;// return the size total len  about the payload if there is value
 }
