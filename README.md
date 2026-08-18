@@ -202,7 +202,6 @@ We'd rather state gaps explicitly than paper over them:
 - [ ] Static linking or DLL bundling for a portable, dependency-free submission binary
 - [ ] Refactor the verified procedural MVP into the target OOP class architecture
 - [ ] Symlink and submodule support
-- [ ] Additional plumbing/porcelain commands as the CodeCrafters track progresses
 
 ## Team
 
@@ -214,13 +213,3 @@ Built by students at **Tribhuvan University, IOE, Purwanchal Campus**, as an OOP
 - Satyadev Mourya
 
 *Subject Teacher: Mr. Bikram Shah*
-
-## Acknowledgements & References
-
-- [CodeCrafters — "Build Your Own Git"](https://codecrafters.io/challenges/git)
-- Git's own protocol documentation: `gitprotocol-http`, `gitprotocol-pack`, `gitprotocol-capabilities`, `gitformat-pack`
-- [Pro Git](https://git-scm.com/book/en/v2), Scott Chacon & Ben Straub — for the conceptual model of objects, trees, and the DAG
-
----
-
-*This README documents the project as of its current development state and will be updated as implementation progresses.*
