@@ -1,6 +1,6 @@
 # Synk 🔗
 
-**Synk** is a from-scratch reimplementation of Git's core plumbing, written in modern C++23. It's built for two purposes at once: as a submission for the [CodeCrafters "Build Your Own Git" challenge](https://codecrafters.io/challenges/git), and as an Object-Oriented Programming course project at **Tribhuvan University, Institute of Engineering (IOE), Purwanchal Campus**.
+**Synk** is a from-scratch reimplementation of Git's core plumbing, written in modern C++23 and as an Object-Oriented Programming course project at **Tribhuvan University, Institute of Engineering (IOE), Purwanchal Campus**.
 
 Rather than treating Git as a black box, this project peels it apart — content-addressable storage, zlib-compressed objects, tree/commit serialization, the binary index format, and the Smart HTTP transport protocol — and rebuilds each piece by hand.
 
