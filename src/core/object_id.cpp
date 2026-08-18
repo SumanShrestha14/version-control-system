@@ -15,7 +15,7 @@ ObjectId ObjectId::fromHex(const std::string &hex) {
       throw std::runtime_error("ObjectId::fromHex: invalid hex char in " + hex);
     }
   }
-  return ObjectId(hex);
+  return ObjectId(hex);//returns the hex characters
 }
 
 ObjectId ObjectId::fromRaw(const std::string &raw20) {
