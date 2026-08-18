@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-struct PktLine {
+struct PktLine {  //structure 
     bool isFlush;
     std::string data;
 };
