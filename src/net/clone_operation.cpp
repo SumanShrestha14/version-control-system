@@ -6,20 +6,20 @@
 #include <iostream>
 #include <fstream>
 
-CloneOperation::CloneOperation(std::string repoUrl, std::filesystem::path targetDir)
+CloneOperation::CloneOperation(std::string repoUrl, std::filesystem::path targetDir)//onstructor asking for repourl and local directorty
     : repoUrl_(std::move(repoUrl)), targetDir_(std::move(targetDir)) {}
 
 CloneOperation::DiscoveryResult CloneOperation::discoverRefs() {
     std::string discoveryUrl = repoUrl_ + "/info/refs?service=git-upload-pack";
-    HttpResponse resp = http_.get(discoveryUrl, {"Git-Protocol: version=0"});
+    HttpResponse resp = http_.get(discoveryUrl, {"Git-Protocol: version=0"});//uses this protocol
     if (resp.statusCode != 200) {
         throw std::runtime_error("Discovery failed, HTTP " + std::to_string(resp.statusCode));
     }
 
-    auto lines = PktLineCodec::parse(resp.body);
+    auto lines = PktLineCodec::parse(resp.body);//here  take raw response and convert into protocol msg
     DiscoveryResult result;
 
-    for (const auto& line : lines) {
+    for (const auto& line : lines) {//  loops  for parsing the reference
         if (line.isFlush) continue;
         if (line.data.rfind("# service=", 0) == 0) continue;
 
@@ -42,11 +42,11 @@ CloneOperation::DiscoveryResult CloneOperation::discoverRefs() {
             std::cerr << "warning: ignoring ref with malformed object id\n";
             continue;
         }
-        result.refs.emplace_back(sha, refName);
+        result.refs.emplace_back(sha, refName);//store references here also detect ref name head 
         if (refName == "HEAD") result.headSha = sha;
 
         if (!capabilities.empty()) {
-            size_t symPos = capabilities.find("symref=HEAD:");
+            size_t symPos = capabilities.find("symref=HEAD:");//set branch reference head
             if (symPos != std::string::npos) {
                 size_t start = symPos + std::string("symref=HEAD:").size();
                 size_t end = capabilities.find(' ', start);
@@ -62,8 +62,8 @@ CloneOperation::DiscoveryResult CloneOperation::discoverRefs() {
 
     return result;
 }
-
-std::string CloneOperation::fetchPackfile(const std::string& wantSha) {
+//asking server for object files
+std::string CloneOperation::fetchPackfile(const std::string& wantSha)//asking for objects {
     std::string uploadPackUrl = repoUrl_ + "/git-upload-pack";
     std::string requestBody;
     requestBody += PktLineCodec::format("want " + wantSha + " side-band-64k agent=synk/0.1\n");
@@ -81,7 +81,7 @@ std::string CloneOperation::fetchPackfile(const std::string& wantSha) {
     return resp.body;
 }
 
-std::string CloneOperation::extractPackData(const std::string& rawResponse) {
+std::string CloneOperation::extractPackData(const std::string& rawResponse) {//exteaction of packfile
     std::vector<PktLine> packLines;
     try {
         packLines = PktLineCodec::parse(rawResponse);
@@ -97,12 +97,12 @@ std::string CloneOperation::extractPackData(const std::string& rawResponse) {
         unsigned char channel = static_cast<unsigned char>(line.data[0]);
         if (channel == 1 || channel == 2 || channel == 3) {
             sawSideband = true;
-            if (channel == 1) {
+            if (channel == 1) {//take data
                 packfileData.append(line.data, 1, std::string::npos);
             } else if (channel == 2) {
                 std::cerr << "remote: " << line.data.substr(1);
             } else {
-                throw std::runtime_error("fatal (remote): " + line.data.substr(1));
+                throw std::runtime_error("fatal (remote): " + line.data.substr(1));//treat as error
             }
         }
     }
@@ -125,7 +125,7 @@ void CloneOperation::run() {
 
     if (discovery.headSha.empty() || discovery.headSha == std::string(40, '0')) {
         std::cerr << "warning: You appear to have cloned an empty repository.\n";
-        std::filesystem::create_directories(targetDir_);
+        std::filesystem::create_directories(targetDir_);//creating target file drectories
         return;
     }
 
@@ -175,3 +175,8 @@ void CloneOperation::run() {
     checkout.checkoutCommit(headId, targetDir_);
     std::cerr << "Checked out working directory from HEAD commit " << discovery.headSha << "\n";
 }
+//this module basically first discover the remote references and identifies the head commit
+//then it communicates with server with http
+//receive the packfile/
+//extract  packline resolve the delta objects and store data locally
+//finallt set local branch and does transverse root tree also settinf repos references
